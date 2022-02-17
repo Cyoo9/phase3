@@ -4,10 +4,16 @@
 #include "lib.h"
 #include <map>
 #include <vector>
-
+#include<string.h>
 extern int yylex(); 
 void yyerror(const char *msg);
 
+
+
+struct CodeNode {
+	std::string name;
+	std::string code;
+};
 
 extern int currLine;
 
@@ -31,11 +37,13 @@ std::vector <Function> symbol_table;
 
 Function *get_function() {
   int last = symbol_table.size()-1;
+  printf("get_function completed\n");
   return &symbol_table[last];
 }
 
 bool find(std::string &value) {
   Function *f = get_function();
+  printf("got the function\n");
   for(int i=0; i < f->declarations.size(); i++) {
     Symbol *s = &f->declarations[i];
     if (s->name == value) {
@@ -78,8 +86,8 @@ void print_symbol_table(void) {
 %union{
   /* put your types here */
 char *identToken;
-int numberToken;
-
+int  numberToken;
+struct CodeNode* code_node;
 }
 %error-verbose
 %locations
@@ -131,7 +139,11 @@ int numberToken;
 %left ASSIGN
 %token <identToken> IDENT
 %token <numberToken> NUMBER
-
+%type <code_node> function
+%type <code_node>identifiers
+%type <code_node> declaration
+%type <code_node> Ident
+%type <code_node> functions
 /* %start program */
 
 %% 
@@ -142,15 +154,29 @@ prog_start: %empty { printf("program -> epsilon\n"); }| functions {printf("progr
 functions: %empty { printf("functions -> epsilon\n"); } 
 | function functions { printf("functions -> function functions\n"); };
 
-function: FUNCTION IDENT SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
-{ 
+function: FUNCTION IDENT
+{
+	printf("passed\n");
+
 	std::string func_name = $2;
   	add_function_to_symbol_table(func_name);
 	print_symbol_table();
+
+} SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
+{ 
 	printf("function -> FUNCTION IDENT SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY\n");
 };
 
-declaration: identifiers COLON INTEGER {  printf("declaration -> identifiers COLON INTEGER\n"); }
+declaration: identifiers COLON INTEGER {  
+
+/*std::string value = $1;
+Type t = Integer;
+CodeNode *node = new CodeNode;
+node->code = ""
+add_variable_to_symbol_table(value,t);
+print_symbol_table();*/
+printf("declaration -> identifiers COLON INTEGER\n");
+ }
 | identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {  printf("Declaration -> Identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER %d R_SQUARE_BRACKET OF INTEGER;\n"); };
 
 declarations: %empty { printf("declarations -> epsilon\n"); } 
@@ -278,7 +304,28 @@ Comp:            EQ
 
 
 Ident: IDENT
-{printf("Ident -> IDENT %s \n", $1); }
+{
+printf("there\n");
+printf("Ident -> IDENT %s \n", $1);
+CodeNode *node = new CodeNode;
+printf("past node making \n");
+node->code = "";
+node->name = $1;
+std::string error;
+printf("here/n");
+if(!find(node->name)){
+	yyerror(error.c_str());
+}
+/*
+if(!find(node->name, Integer, error)){
+	yyerror(error.c_str());
+}
+
+add_variable_to_symbol_table(node->name, Integer);
+print_symbol_table();
+*/
+$$ = node;
+ }
 
 %% 
 
