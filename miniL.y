@@ -53,6 +53,15 @@ bool find(std::string &value) {
   return false;
 }
 
+std::string create_temp() {
+   static int num = 0;
+   std::string temp = 'L' + std::to_string(num++); 
+   return temp;
+}
+
+std:: string decl_temp(std::string &value) {
+	return value; //placeholder
+}
 void add_function_to_symbol_table(std::string &value) {
   Function f; 
   f.name = value; 
@@ -144,6 +153,10 @@ struct CodeNode* code_node;
 %type <code_node> declaration
 %type <code_node> Ident
 %type <code_node> functions
+%type <code_node> Expression
+%type <code_node> Statement
+%type <code_node> Var
+
 /* %start program */
 
 %% 
@@ -196,8 +209,18 @@ Statement SEMICOLON
   printf("statements -> statement SEMICOLON statements\n");
 };
 
-Statement: READ Vars {  printf("Statement -> Read\n");} | BREAK { printf("Statement -> Break\n");}  | Var ASSIGN Expression
-{printf("Statement -> Var ASSIGN Expression\n");}
+Statement: READ Vars {  printf("Statement -> Read\n");} | BREAK { printf("Statement -> Break\n");}  | Var ASSIGN Expression {
+std::string var_name = $1;
+
+if(!find(var_name)) {
+	yyerror("Use of undeclared variable");
+}
+
+CodeNode *node = new CodeNode;
+node->code = $3->code;
+node->code += std::string("= ") + var_name + std::string(", ") + $3->name + std::string("\n");
+$$ = node;
+};
                  | IF BoolExp THEN Statements ElseStatement ENDIF
 		 {printf("Statement -> IF BoolExp THEN Statements ElseStatement ENDIF\n");}		 
                  | WHILE BoolExp BEGINLOOP Statements ENDLOOP
@@ -220,8 +243,14 @@ ElseStatement:   %empty
 Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 {printf("Var -> Ident  L_SQUARE_BRACKET Expression R_SQUARE_BRACKET\n");}
                  | Ident
-		 {printf("Var -> Ident \n");}
-;
+		 { CodeNode *node = new CodeNode; 
+		   node->code = "";
+                   node->name = $1; 
+		   if(!find(code->name)) {
+			yyerror("use of undeclared variable");
+		   }
+		   $$ = node;
+};
 Vars:            Var
 {printf("Vars -> Var\n");}
                  | Var COMMA Vars
@@ -230,10 +259,22 @@ Vars:            Var
 
 Expression:      MultExp
 {printf("Expression -> MultExp\n");}
-                 | MultExp ADD Expression
-		 {printf("Expression -> MultExp ADD Expression\n");}
-                 | MultExp SUB Expression
-		 {printf("Expression -> MultExp SUB Expression\n");}
+                 | MultExp ADD Expression {
+			string temp = create_temp();
+			CodeNode* node = new CodeNode;
+			node->code = $1->code + $3->code + decl_temp_code(temp);
+			node->code += std::string("+ ") + temp + std::string(", ") + $1->name + std::string(", ") + $3->name + std::string("\n");
+			node->name = temp; 
+			$$ = node; 			
+};
+                 | MultExp SUB Expression {
+			string temp = create_temp();
+                        CodeNode* node = new CodeNode;
+                        node->code = $1->code + $3->code + decl_temp_code(temp);
+                        node->code += std::string("- ") + temp + std::string(", ") + $1->name + std::string(", ") + $3->name + std::string("\n");
+                        node->name = temp;
+                        $$ = node;
+}
 ;
 Expressions:     %empty
 {printf("Expressions -> epsilon\n");}
