@@ -54,10 +54,16 @@ bool find(std::string &value) {
 }
 
 std::string create_temp() {
-   static int num = 0;
-   std::string temp = 'L' + std::to_string(num++); 
+   int num = 0;
+   std::string temp = "temp" + std::to_string(num++); 
    return temp;
 }
+
+std::string create_label() {
+   int num = 0;
+   std::string temp = "label" + std::to_string(num++);
+}
+
 
 std:: string decl_temp(std::string &value) {
 	return value; //placeholder
@@ -222,7 +228,22 @@ node->code += std::string("= ") + var_name + std::string(", ") + $3->name + std:
 $$ = node;
 };
                  | IF BoolExp THEN Statements ElseStatement ENDIF
-		 {printf("Statement -> IF BoolExp THEN Statements ElseStatement ENDIF\n");}		 
+		 { std::string then_begin = create_label();
+		   std::string after = create_label();
+		   CodeNode *node = new CodeNode;
+		   //if true
+		   node->code = $2->code;
+		   node->code += std::string("?:= ") + then_begin + std::string(", ") + $2->name + std::string("\n"); 
+                   //else 
+		   node->code = $5->code;
+		   node->code += std::string(":= ") + after + std::string("\n") + std::string(": ") + then_begin + std::string("\n");
+
+		   node->code = $4->code;
+		   node->code += std::string(": ") + after + std::string("\n"); 
+
+		   $$ = node; 
+		   
+ }		 
                  | WHILE BoolExp BEGINLOOP Statements ENDLOOP
 		 {printf("Statement -> WHILE BoolExp BEGINLOOP Statements ENDLOOP\n");}
                  | DO BEGINLOOP Statements ENDLOOP WHILE BoolExp
@@ -235,9 +256,14 @@ $$ = node;
 		 {printf("Statement -> RETURN Expression\n");}
 ;
 ElseStatement:   %empty
-{printf("ElseStatement -> epsilon\n");}
-                 | ELSE Statements
-		 {printf("ElseStatement -> ELSE Statements\n");}
+{   CodeNode *node = new CodeNode*;
+    node->code = empty; 
+    $$ = node; }
+| ELSE Statements
+ {   CodeNode *node = new CodeNode; 
+     node->code = $2->code;
+     $$ = node;  
+}
 ;
 
 Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
@@ -262,7 +288,7 @@ Expression:      MultExp
                  | MultExp ADD Expression {
 			string temp = create_temp();
 			CodeNode* node = new CodeNode;
-			node->code = $1->code + $3->code + decl_temp_code(temp);
+			node->code = $1->code + $3->code + decl_temp();
 			node->code += std::string("+ ") + temp + std::string(", ") + $1->name + std::string(", ") + $3->name + std::string("\n");
 			node->name = temp; 
 			$$ = node; 			
