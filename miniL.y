@@ -102,11 +102,15 @@ void print_symbol_table(void) {
   /* put your types here */
 char *identToken;
 int  numberToken;
-struct CodeNode* code_node;
+sminiL.y:202.24-26: error: $11 of ‘function’ has no declared type
+truct CodeNode* code_node;
 }
 %error-verbose
 %locations
 %start prog_start
+
+
+
 %token FUNCTION 
 %token BEGIN_PARAMS
 %token END_PARAMS
@@ -154,14 +158,12 @@ struct CodeNode* code_node;
 %left ASSIGN
 %token <identToken> IDENT
 %token <numberToken> NUMBER
+
 %type <code_node> function
-%type <code_node>identifiers
-%type <code_node> declaration
-%type <code_node> Ident
-%type <code_node> functions
-%type <code_node> Expression
-%type <code_node> Statement
-%type <code_node> Var
+%type <code_node> Ident LocalIdent FunctionIdent
+%type <code_node> declarations declaration identifiers Var Vars
+%type <code_node> Statements Statement ElseStatement
+%type <code_node> Expression Expressions MultExp Term BoolExp RExp1 Comp
 
 /* %start program */
 
@@ -173,17 +175,33 @@ prog_start: %empty { printf("program -> epsilon\n"); }| functions {printf("progr
 functions: %empty { printf("functions -> epsilon\n"); } 
 | function functions { printf("functions -> function functions\n"); };
 
-function: FUNCTION IDENT
-{
-	printf("passed\n");
-
-	std::string func_name = $2;
-  	add_function_to_symbol_table(func_name);
-	print_symbol_table();
-
-} SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
+function:  SEMICOLON FunctionIdent BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
 { 
-	printf("function -> FUNCTION IDENT SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY\n");
+std::string temp = "func "; 
+CodeNode* node = new CodeNode;
+node->name = $2->name;
+node->code = std::string("\n") + $2->code + $5->code;
+
+std::string init_parms = $5->code;
+int param_num = 0;
+while(init_params.find(".") != std::string::npos) {
+	size_t pos = init_params.find(".");
+	std::string param = ", $";
+	param.append(std::to_string(param_num++));
+	param.append("\n");
+	init_params.replace(init_parms.find("\n", pos), 1, param); 
+}
+
+node->code += init_params + $8->code; 
+std::string statements($11->code);
+
+if(statements.find("continue") != std::string::npos) {
+	printf("ERROR: continue outside loop in function %s\n", $2.name); 
+}
+
+node->code += statements +  std::string("endfunc\n"); 
+
+printf("%s", node->code.c_str());
 };
 
 declaration: identifiers COLON INTEGER {  
@@ -216,11 +234,8 @@ Statement SEMICOLON
 };
 
 Statement: READ Vars {  printf("Statement -> Read\n");} | BREAK { printf("Statement -> Break\n");}  | Var ASSIGN Expression {
-std::string var_name = $1;
 
-if(!find(var_name)) {
-	yyerror("Use of undeclared variable");
-}
+std::string var_name = $1->name;
 
 CodeNode *node = new CodeNode;
 node->code = $3->code;
@@ -256,8 +271,7 @@ $$ = node;
 		 {printf("Statement -> RETURN Expression\n");}
 ;
 ElseStatement:   %empty
-{   CodeNode *node = new CodeNode*;
-    node->code = empty; 
+{   CodeNode *node = new CodeNode; 
     $$ = node; }
 | ELSE Statements
  {   CodeNode *node = new CodeNode; 
@@ -271,11 +285,11 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
                  | Ident
 		 { CodeNode *node = new CodeNode; 
 		   node->code = "";
-                   node->name = $1; 
-		   if(!find(code->name)) {
-			yyerror("use of undeclared variable");
-		   }
-		   $$ = node;
+                   node->name = $1->name; 
+		   if(!find(node->name)){
+			printf("ERRORRRRRRRRRR\n");
+		}	
+		$$ = node;
 };
 Vars:            Var
 {printf("Vars -> Var\n");}
@@ -286,17 +300,17 @@ Vars:            Var
 Expression:      MultExp
 {printf("Expression -> MultExp\n");}
                  | MultExp ADD Expression {
-			string temp = create_temp();
+			std::string temp = create_temp();
 			CodeNode* node = new CodeNode;
-			node->code = $1->code + $3->code + decl_temp();
+			node->code = $1->code + $3->code + decl_temp(temp);
 			node->code += std::string("+ ") + temp + std::string(", ") + $1->name + std::string(", ") + $3->name + std::string("\n");
 			node->name = temp; 
 			$$ = node; 			
 };
                  | MultExp SUB Expression {
-			string temp = create_temp();
+			std::string temp = create_temp();
                         CodeNode* node = new CodeNode;
-                        node->code = $1->code + $3->code + decl_temp_code(temp);
+                        node->code = $1->code + $3->code + decl_temp(temp);
                         node->code += std::string("- ") + temp + std::string(", ") + $1->name + std::string(", ") + $3->name + std::string("\n");
                         node->name = temp;
                         $$ = node;
@@ -394,6 +408,31 @@ print_symbol_table();
 $$ = node;
  }
 
+FunctionIdent: IDENT
+{
+	if (find(std::string($1)) != std::string::npos)) {
+		char temp[128];
+		snprintf(temp, 128, "Redeclaration of function %s", $1);
+    		yyerror(temp);
+	}
+	else {
+		add_function_to_symbol_table(std::string($1));
+	}
+
+		
+ };
+LocalIdent: IDENT
+{
+        if (find(std::string($1)) != std::string::npos)) {
+                char temp[128];
+                snprintf(temp, 128, "Redeclaration of variable %s", $1);
+                yyerror(temp);
+        }
+        else {
+                add_variable_to_symbol_table(std::string($1));
+        }
+	
+}
 %% 
 
 int main(int argc, char **argv) {
