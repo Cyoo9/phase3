@@ -1,4 +1,3 @@
-    /* cs152-miniL phase2 */
 %{
 #include <stdio.h>
 #include "lib.h"
@@ -53,21 +52,6 @@ bool find(std::string &value) {
   return false;
 }
 
-std::string create_temp() {
-   int num = 0;
-   std::string temp = "temp" + std::to_string(num++); 
-   return temp;
-}
-
-std::string create_label() {
-   int num = 0;
-   std::string temp = "label" + std::to_string(num++);
-}
-
-
-std:: string decl_temp(std::string &value) {
-	return value; //placeholder
-}
 void add_function_to_symbol_table(std::string &value) {
   Function f; 
   f.name = value; 
@@ -101,19 +85,14 @@ void print_symbol_table(void) {
 %union{
   /* put your types here */
 char *identToken;
-int  numberToken;
-sminiL.y:202.24-26: error: $11 of ‘function’ has no declared type
-truct CodeNode* code_node;
+char * numberToken;
+struct CodeNode* code_node;
 }
 %error-verbose
 %locations
 %start prog_start
-
-
-
 %token FUNCTION 
 %token BEGIN_PARAMS
-%token END_PARAMS
 %token BEGIN_LOCALS
 %token END_LOCALS
 %token BEGIN_BODY 
@@ -158,69 +137,82 @@ truct CodeNode* code_node;
 %left ASSIGN
 %token <identToken> IDENT
 %token <numberToken> NUMBER
-
 %type <code_node> function
-%type <code_node> Ident LocalIdent FunctionIdent
-%type <code_node> declarations declaration identifiers Var Vars
-%type <code_node> Statements Statement ElseStatement
-%type <code_node> Expression Expressions MultExp Term BoolExp RExp1 Comp
-
+%type <code_node>identifiers
+%type <code_node> declaration declarations
+%type <code_node> Ident
+%type <code_node> functions
+%type <code_node> Var
+%type <code_node> Statement
+%type <code_node> Expression
+%type <code_node> Term
 /* %start program */
 
 %% 
 
   /* write your rules here */
-prog_start: %empty { printf("program -> epsilon\n"); }| functions {printf("program -> functions\n"); };
+prog_start: %empty { printf("program -> epsilon\n"); }| function prog_start {  };
 
-functions: %empty { printf("functions -> epsilon\n"); } 
-| function functions { printf("functions -> function functions\n"); };
 
-function:  SEMICOLON FunctionIdent BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
-{ 
-std::string temp = "func "; 
+function: FUNCTION IDENT {
+printf("passed\n");
+
+	std::string func_name = $2;
+  	add_function_to_symbol_table(func_name);
+ }
+SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
+{
+
+
+std::string temp = "func ";
 CodeNode* node = new CodeNode;
-node->name = $2->name;
-node->code = std::string("\n") + $2->code + $5->code;
+node->name = func_name;
+node->code += std::string("\n") + func_name + $3->code;
 
-std::string init_parms = $5->code;
-int param_num = 0;
+std::string init_params = $3->code;
+int param_number = 0;
 while(init_params.find(".") != std::string::npos) {
-	size_t pos = init_params.find(".");
-	std::string param = ", $";
-	param.append(std::to_string(param_num++));
-	param.append("\n");
-	init_params.replace(init_parms.find("\n", pos), 1, param); 
+        size_t pos = init_params.find(".");
+        init_params.replace(pos, 1, "=");
+        std::string param = ", $";
+        param.append(std::to_string(param_number++));
+        param.append("\n");
+        init_params.replace(init_params.find("\n", pos), 1, param);
 }
 
-node->code += init_params + $8->code; 
-std::string statements($11->code);
+node->code += init_params + $6->code;
 
+std::string statements($9->code);
 if(statements.find("continue") != std::string::npos) {
-	printf("ERROR: continue outside loop in function %s\n", $2.name); 
+        printf("ERROR: Continue outside loop in function");
 }
+node->code += statements + std::string("endfunc\n");
 
-node->code += statements +  std::string("endfunc\n"); 
-
-printf("%s", node->code.c_str());
+printf(node->code.c_str());
 };
 
 declaration: identifiers COLON INTEGER {  
-
-/*std::string value = $1;
-Type t = Integer;
-CodeNode *node = new CodeNode;
-node->code = ""
-add_variable_to_symbol_table(value,t);
-print_symbol_table();*/
-printf("declaration -> identifiers COLON INTEGER\n");
+	CodeNode *node = new CodeNode;
+	node->code = ". " + $1->name + "\n";
+	node->name = $1->name;
+	add_variable_to_symbol_table(node->name, Integer);
+	printf(node->code.c_str());
+	print_symbol_table();
+	$$ = node;
+	printf("declaration -> identifiers COLON INTEGER\n");
  }
-| identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {  printf("Declaration -> Identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER %d R_SQUARE_BRACKET OF INTEGER;\n"); };
+| identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
+{  printf("Declaration -> Identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER %d R_SQUARE_BRACKET OF INTEGER;\n"); };
 
-declarations: %empty { printf("declarations -> epsilon\n"); } 
-| declaration SEMICOLON declarations { printf("declarations -> declaration SEMICOLON declarations\n"); };
+declarations: %empty
+{ printf("declarations -> epsilon\n"); } 
+| declaration SEMICOLON declarations 
+{ printf("declarations -> declaration SEMICOLON declarations\n"); };
 
 
-identifiers: Ident { printf("identifiers -> Ident\n"); };
+identifiers: Ident {
+ printf("identifiers -> Ident\n");
+ };
 
 
 Statements: 
@@ -233,32 +225,23 @@ Statement SEMICOLON
   printf("statements -> statement SEMICOLON statements\n");
 };
 
-Statement: READ Vars {  printf("Statement -> Read\n");} | BREAK { printf("Statement -> Break\n");}  | Var ASSIGN Expression {
+Statement: READ Vars {  printf("Statement -> Read\n");} | BREAK { printf("Statement -> Break\n");}  | Var ASSIGN Expression
+{printf("Statement -> Var ASSIGN Expression\n");
+	std::string var_name = $1->name;
+	if (!find(var_name)){
+		printf("ERRRRORRRR \n");
+	}
+	printf("MADE IT TO HERE\n\n\n");
+	CodeNode *node = new CodeNode;
+	node->code = $3->code;
+	printf("made it to heresasdasdasda\n\n\n");
+	node->code += std::string("= ") + var_name + std::string(", ") + $3->name + std::string("\n");
+	printf(node->code.c_str());
+	$$ = node;
 
-std::string var_name = $1->name;
-
-CodeNode *node = new CodeNode;
-node->code = $3->code;
-node->code += std::string("= ") + var_name + std::string(", ") + $3->name + std::string("\n");
-$$ = node;
-};
+}
                  | IF BoolExp THEN Statements ElseStatement ENDIF
-		 { std::string then_begin = create_label();
-		   std::string after = create_label();
-		   CodeNode *node = new CodeNode;
-		   //if true
-		   node->code = $2->code;
-		   node->code += std::string("?:= ") + then_begin + std::string(", ") + $2->name + std::string("\n"); 
-                   //else 
-		   node->code = $5->code;
-		   node->code += std::string(":= ") + after + std::string("\n") + std::string(": ") + then_begin + std::string("\n");
-
-		   node->code = $4->code;
-		   node->code += std::string(": ") + after + std::string("\n"); 
-
-		   $$ = node; 
-		   
- }		 
+		 {printf("Statement -> IF BoolExp THEN Statements ElseStatement ENDIF\n");}		 
                  | WHILE BoolExp BEGINLOOP Statements ENDLOOP
 		 {printf("Statement -> WHILE BoolExp BEGINLOOP Statements ENDLOOP\n");}
                  | DO BEGINLOOP Statements ENDLOOP WHILE BoolExp
@@ -271,26 +254,24 @@ $$ = node;
 		 {printf("Statement -> RETURN Expression\n");}
 ;
 ElseStatement:   %empty
-{   CodeNode *node = new CodeNode; 
-    $$ = node; }
-| ELSE Statements
- {   CodeNode *node = new CodeNode; 
-     node->code = $2->code;
-     $$ = node;  
-}
+{printf("ElseStatement -> epsilon\n");}
+                 | ELSE Statements
+		 {printf("ElseStatement -> ELSE Statements\n");}
 ;
 
 Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 {printf("Var -> Ident  L_SQUARE_BRACKET Expression R_SQUARE_BRACKET\n");}
                  | Ident
-		 { CodeNode *node = new CodeNode; 
-		   node->code = "";
-                   node->name = $1->name; 
-		   if(!find(node->name)){
+		 {
+		CodeNode *node = new CodeNode;
+		node->code = "";
+		node->name = $1->name;
+		if(!find(node->name)){
 			printf("ERRORRRRRRRRRR\n");
 		}	
 		$$ = node;
-};
+		printf("Var -> Ident \n");}
+;
 Vars:            Var
 {printf("Vars -> Var\n");}
                  | Var COMMA Vars
@@ -299,22 +280,10 @@ Vars:            Var
 
 Expression:      MultExp
 {printf("Expression -> MultExp\n");}
-                 | MultExp ADD Expression {
-			std::string temp = create_temp();
-			CodeNode* node = new CodeNode;
-			node->code = $1->code + $3->code + decl_temp(temp);
-			node->code += std::string("+ ") + temp + std::string(", ") + $1->name + std::string(", ") + $3->name + std::string("\n");
-			node->name = temp; 
-			$$ = node; 			
-};
-                 | MultExp SUB Expression {
-			std::string temp = create_temp();
-                        CodeNode* node = new CodeNode;
-                        node->code = $1->code + $3->code + decl_temp(temp);
-                        node->code += std::string("- ") + temp + std::string(", ") + $1->name + std::string(", ") + $3->name + std::string("\n");
-                        node->name = temp;
-                        $$ = node;
-}
+                 | MultExp ADD Expression
+		 {printf("Expression -> MultExp ADD Expression\n");}
+                 | MultExp SUB Expression
+		 {printf("Expression -> MultExp SUB Expression\n");}
 ;
 Expressions:     %empty
 {printf("Expressions -> epsilon\n");}
@@ -339,7 +308,14 @@ Term:            Var
                  | SUB Var
 		 {printf("Term -> SUB Var\n");}
                  | NUMBER
-		 {printf("Term -> NUMBER %d\n", $1);}
+		 {
+				
+			CodeNode *node = new CodeNode;
+			node->code = "";
+			node->name = $1;
+			$$ = node;
+			
+			printf("Term -> NUMBER %d\n", $1);}
                  | SUB NUMBER
 		 {printf("Term -> SUB NUMBER %d\n", $2);}
                  | L_PAREN Expression R_PAREN
@@ -386,7 +362,10 @@ Comp:            EQ
 
 Ident: IDENT
 {
-printf("there\n");
+CodeNode *node = new CodeNode;
+node->code = "";
+node->name = $1;
+/*printf("there\n");
 printf("Ident -> IDENT %s \n", $1);
 CodeNode *node = new CodeNode;
 printf("past node making \n");
@@ -406,33 +385,9 @@ add_variable_to_symbol_table(node->name, Integer);
 print_symbol_table();
 */
 $$ = node;
+
  }
 
-FunctionIdent: IDENT
-{
-	if (find(std::string($1)) != std::string::npos)) {
-		char temp[128];
-		snprintf(temp, 128, "Redeclaration of function %s", $1);
-    		yyerror(temp);
-	}
-	else {
-		add_function_to_symbol_table(std::string($1));
-	}
-
-		
- };
-LocalIdent: IDENT
-{
-        if (find(std::string($1)) != std::string::npos)) {
-                char temp[128];
-                snprintf(temp, 128, "Redeclaration of variable %s", $1);
-                yyerror(temp);
-        }
-        else {
-                add_variable_to_symbol_table(std::string($1));
-        }
-	
-}
 %% 
 
 int main(int argc, char **argv) {
@@ -447,3 +402,4 @@ extern char* yytext;
 
 printf("ERROR %s at symbol \"%s\" on line %d\n", msg, yytext, lineNum); 
 }
+
