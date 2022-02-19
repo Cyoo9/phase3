@@ -209,42 +209,11 @@ declaration: identifiers COLON INTEGER {
 	char temp[128];
 	snprintf(temp, 128, "Array size can't be less than 1!");
    }
-   std::string vars($1->name);
-   std::string temp;
-   std::string variable;
-   bool cont = true;
-
-   size_t oldpos = 0;
-   size_t pos = 0;
 
    CodeNode* node = new CodeNode;
-   while(cont) {
- 	pos = vars.find("|", oldpos);
-	if(pos == std::string::npos) {
-		node->code = ".[] ";
-		variable = vars.substr(oldpos, pos);
-		node->code += variable + ", " + std::to_string($5) + "\n";
-		cont = false;
-	} 
-	else {
-		size_t len = pos - oldpos;
-      		node->code = ".[] ";
-		
-     		variable = vars.substr(oldpos, len);
-     		node->code += variable + ", " + std::to_string($5) + "\n";
-		
-	}
-	if(find(variable)) { 
-		char temp[128];
-		snprintf(temp, 128, "Redeclaration of variable %s", variable.c_str());
-		yyerror(temp);
-	} else {
-		add_variable_to_symbol_table(variable, Array);
-	}
-
-	oldpos = pos + 1;
-   }
-   $$ = node;
+   node->code += ".[] " + $1->name + ", " + std::to_string($5) + "\n";
+   add_variable_to_symbol_table($1->name, Array); 
+   $$ = node; 
  };
 
 declarations: %empty
@@ -708,3 +677,4 @@ std::string create_label() {
 	std::string temp = "_label" + std::to_string(label_counter++);
 	return temp;
 }
+
