@@ -3,7 +3,7 @@
 #include "lib.h"
 #include <map>
 #include <vector>
-#include<string>
+#include<string.h>
 extern int yylex(); 
 void yyerror(const char *msg);
 
@@ -396,6 +396,7 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 	CodeNode* node = new CodeNode;
 	node->name += $1->name + ", " + $3->name; 
 	node->code += $3->code;
+	add_variable_to_symbol_table(node->name, Array);
 	$$ = node;
 	$$->array = true;
 }
@@ -436,14 +437,14 @@ Expression:      MultExp
                  | MultExp ADD Expression
 		 { 
 			CodeNode* node = new CodeNode; 
-			node->name = create_temp().c_str();
+			node->name = strdup(create_temp().c_str());
 			node->code += $1->code + $3->code + ". " + node->name + "\n" + "+ " + node->name + ", " + $1->name + ", " + $3->name + "\n";
 			$$ = node;
 		  }
                  | MultExp SUB Expression
 		 {
 			CodeNode* node = new CodeNode;
-                        node->name = create_temp().c_str();
+                        node->name = strdup(create_temp().c_str());
                         node->code += $1->code + $3->code + ". " + node->name + "\n" + "- " + node->name + ", " + $1->name + ", " + $3->name + "\n";
                         $$ = node;
  
@@ -478,14 +479,14 @@ MultExp:         Term
                  | Term MULT MultExp
 		 { 
 			CodeNode* node = new CodeNode;
-			node->name = create_temp().c_str();
+			node->name = strdup(create_temp().c_str());
 			node->code += ". " + node->name + "\n" + $1->code + $3->code + "* " + node->name + ", " + $1->name + ", " + $3->name + "\n";
 			$$ = node;  
 		 }
                  | Term DIV MultExp
 		 {
 			CodeNode* node = new CodeNode;
-                        node->name = create_temp().c_str();
+                        node->name = strdup(create_temp().c_str());
                         node->code += ". " + node->name + "\n" + $1->code + $3->code + "/ " + node->name + ", " + $1->name + ", " + $3->name + "\n";
                         $$ = node;
 			
@@ -493,7 +494,7 @@ MultExp:         Term
                  | Term MOD MultExp
 		 {
 			CodeNode* node = new CodeNode;
-                        node->name = create_temp().c_str();
+                        node->name = strdup(create_temp().c_str());
                         node->code += ". " + node->name + "\n" + $1->code + $3->code + "% " + node->name + ", " + $1->name + ", " + $3->name + "\n";
                         $$ = node;
   
@@ -513,7 +514,7 @@ Term:            Var
                  | SUB Var
 		{ 
 			CodeNode* node = new CodeNode;
-			node->name = create_temp().c_str();
+			node->name = strdup(create_temp().c_str());
 			node->code += $2->code + ". " + node->name + "\n";
 			if($2->array) {
 				node->code += ("=[] ") + node->name + ", " + $2->name + "\n";
@@ -555,7 +556,7 @@ Term:            Var
                  | Ident L_PAREN Expressions R_PAREN
 		 {
 			CodeNode* node = new CodeNode;
-			node->name = create_temp().c_str();
+			node->name = strdup(create_temp().c_str());
 			node->code += $3->code + ". " + node->name + "\n" + "call " + $1->name + ", " + node->name + "\n";
 			$$ = node; 
 		 }
