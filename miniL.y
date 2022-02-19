@@ -20,7 +20,8 @@ extern int  numberToken;
 extern int currLine;
 
 int  count_names = 0;
-
+bool isArray = false;
+int incrementTemp = 0;
 
 enum Type { Integer, Array };
 struct Symbol {
@@ -415,7 +416,11 @@ Vars:            Var
 		
 		}
                  | Var COMMA Vars
-		 {  };
+		 {  
+			CodeNode* node = new CodeNode; 
+			node->code += $1->code + $1->name + "\n" + $3->code;
+			$$ = node; 
+		 };
 
 Expression:      MultExp
 { 
@@ -441,27 +446,80 @@ Expression:      MultExp
 		 }
 ;
 Expressions:     %empty
-{    }
+{   
+	CodeNode* node = new CodeNode;
+	$$ = node;
+ }
                  | Expression COMMA Expressions
-		 {  }
+		 { 
+			CodeNode* node = new CodeNode;
+			node->code += $1->code + "param " + $1->name + "\n" + $3->code;
+			$$ = node; 
+		 }
                  | Expression
-		 {  }
+		 { 
+			CodeNode* node = new CodeNode;
+			node->code += $1->code + "param " + $1->name + "\n";
+			$$ = node; 
+		 }
 ;
 
 MultExp:         Term
-{  }
+{ 
+	CodeNode* node = new CodeNode;
+	node->code = $1->code;
+	node->name = $1->name;
+	$$ = node;	
+}
                  | Term MULT MultExp
-		 {   }
+		 { 
+			CodeNode* node = new CodeNode;
+			node->name = create_temp().c_str();
+			node->code += ". " + node->name + "\n" + $1->code + $3->code + "* " + node->name + ", " + $1->name + ", " + $3->name + "\n";
+			$$ = node;  
+		 }
                  | Term DIV MultExp
-		 {  }
+		 {
+			CodeNode* node = new CodeNode;
+                        node->name = create_temp().c_str();
+                        node->code += ". " + node->name + "\n" + $1->code + $3->code + "/ " + node->name + ", " + $1->name + ", " + $3->name + "\n";
+                        $$ = node;
+			
+ 		 }
                  | Term MOD MultExp
-		 {  }
+		 {
+			CodeNode* node = new CodeNode;
+                        node->name = create_temp().c_str();
+                        node->code += ". " + node->name + "\n" + $1->code + $3->code + "% " + node->name + ", " + $1->name + ", " + $3->name + "\n";
+                        $$ = node;
+  
+		 }
 ;
 
 Term:            Var
-{   }
+{ 
+	if($$->array) {
+		CodeNode* node = new CodeNode;
+		std::string middle = create_temp();
+		node->code += $1->code + ". " + middle + "\n" + "=[] " + middle + ", " + $1->name + "\n";
+		$$->array  = false;
+		$$ = node;
+	}
+}
                  | SUB Var
-		 {  }
+		{ 
+			CodeNode* node = new CodeNode;
+			node->name = create_temp().c_str();
+			node->code += $2->code + ". " + node->name + "\n";
+			if($2->array) {
+				node->code += ("=[] ") + node->name + ", " + $2->name + "\n";
+			} else {
+				node->code += "= " + node->name + ", " + $2->name + "\n";
+			}
+			node->code += "* " + node->name + ", " + node->name + ", -1\n";
+			$$ = node; 
+			$$->array  = false; 
+		}	
                  | NUMBER
 		 {
 				
@@ -470,46 +528,123 @@ Term:            Var
 			$$ = node;
 			
 		}
-                 | SUB NUMBER
-		 {  }
+                 | SUB NUMBER	 
+		 {
+			CodeNode* node = new CodeNode;
+			node->code += "-" + std::to_string($2);
+			$$ = node; 	 
+		 }
                  | L_PAREN Expression R_PAREN
-		 { }
+		 {
+			CodeNode* node = new CodeNode;
+			node->code += $2->code; 
+			node->name + $2->name;
+			$$ = node;
+		 }
                  | SUB L_PAREN Expression R_PAREN
-		 {   }
+		 {   
+			CodeNode* node = new CodeNode;
+			node->name = $3->name;
+			node->code += $3->code + "* " + $3->name + ", " + $3->name + ", -1\n";
+			$$ = node;	
+	 	 }
                  | Ident L_PAREN Expressions R_PAREN
-		 {  }
+		 {
+			/*if(!find($1->name)) {
+				yyerror("use of undeclared function");
+			} */
+		 }
 ;
 
 
 
 BoolExp:            NOT RExp1 
-{  }
+{
+	std::string dest = create_temp();
+	CodeNode* node = new CodeNode;
+	node->code += $2->code + ". " + dest + "\n" + "! " + dest + ", " + $2->name + "\n";
+	$$ = node;  
+}
                  | RExp1
-                 { }
+                 {
+			CodeNode* node = new CodeNode;
+			node->code = $1->code;
+			node->name = $1->name; 
+			$$ = node;  
+		 }
 
 ;
 RExp1:           Expression Comp Expression
-{  }
+{ 
+
+std::string dest = create_temp();
+CodeNode* node = new CodeNode;
+node->code += $1->code + $3->code + ". " + dest + "\n" + $2->name + dest + ", " + $1->name + ", " + $3->name + "\n";
+$$ = node; 
+}
                  | TRUE
-		     {  }
+		     { 
+			CodeNode* node = new CodeNode;
+		      	node->name = "1";
+			$$ = node;
+		     }
                  | FALSE
-		     {  }
+		     {
+			CodeNode*  node = new CodeNode;
+			node->name = "0";
+			$$ = node;  
+		     }
                  | L_PAREN BoolExp R_PAREN
-		   { }
+		   {
+			CodeNode* node = new CodeNode;
+			node->code = $2->code;
+			node->name = $2->name;
+			$$ = node; 
+		   }
 ;
 
 Comp:            EQ
-{  }
+{
+	CodeNode*  node = new CodeNode;
+	node->name = "== ";
+	$$ = node;		  
+}
+
                  | NEQ
-                 {   }
+                 {
+			    	CodeNode*  node = new CodeNode;
+        			node->name = "!= ";
+        			$$ = node;
+   
+		 }
                  | LT
-                 {  }
+                 { 
+		        CodeNode*  node = new CodeNode;
+        		node->name = "< ";
+        		$$ = node;
+
+		 }
                  | GT
-                 {  }
+                 {  
+		        CodeNode*  node = new CodeNode;
+       			node->name = "> ";
+        		$$ = node;
+
+		 }
                  | LTE
-                 {   }
+                 {   
+        		CodeNode*  node = new CodeNode;
+        		node->name = "<= ";
+        		$$ = node;
+
+		 }
                  | GTE
-                 { }
+                 {
+		        CodeNode*  node = new CodeNode;
+        		node->name = ">= ";
+        		$$ = node;
+ 
+		 }
 ;
 
 
