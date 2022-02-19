@@ -21,7 +21,8 @@ extern int currLine;
 
 int  count_names = 0;
 bool isArray = false;
-int incrementTemp = 0;
+int temp_counter = 0;
+int label_counter = 0;
 
 enum Type { Integer, Array };
 struct Symbol {
@@ -155,11 +156,11 @@ prog_start: %empty { }| function prog_start {  };
 
 
 function: FUNCTION IDENT {
-printf("passed\n");
-
 	std::string func_name = $2;
   	add_function_to_symbol_table(func_name);
-	printf("added func name to symbol table\n");
+	CodeNode* node = new CodeNode;
+	node->code += "func " + func_name + "\n";
+	printf(node->code.c_str());
  } 
 SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
 {
@@ -372,12 +373,14 @@ $$ = node;
 			CodeNode* node = new CodeNode;
 			node->code = "continue\n";
 			$$ = node; 
+			printf(node->code.c_str());
 		  }
                  | RETURN Expression
 		 { 
 			CodeNode* node = new CodeNode;
 			node->code += $2->code + "ret " + $2->name + "\n";
 			$$ = node; 
+			printf(node->code.c_str());
 		  }
 ;
 ElseStatement:   %empty
@@ -550,9 +553,10 @@ Term:            Var
 	 	 }
                  | Ident L_PAREN Expressions R_PAREN
 		 {
-			/*if(!find($1->name)) {
-				yyerror("use of undeclared function");
-			} */
+			CodeNode* node = new CodeNode;
+			node->name = create_temp().c_str();
+			node->code += $3->code + ". " + node->name + "\n" + "call " + $1->name + ", " + node->name + "\n";
+			$$ = node; 
 		 }
 ;
 
@@ -693,13 +697,11 @@ printf("ERROR %s at symbol \"%s\" on line %d\n", msg, yytext, lineNum);
 }
 
 std::string create_temp() {
-	int num = 0;
-	std::string temp = "_temp" + std::to_string(num++);
+	std::string temp = "_temp" + std::to_string(temp_counter++);
 	return temp;
 }
 
 std::string create_label() {
-	int num = 0;
-	std::string temp = "_label" + std::to_string(num++);
+	std::string temp = "_label" + std::to_string(label_counter++);
 	return temp;
 }
