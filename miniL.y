@@ -140,9 +140,9 @@ struct CodeNode* code_node;
 %token <identToken> IDENT
 %token <numberToken> NUMBER
 %type <code_node> function
-%type <code_node>identifiers
+%type <code_node> identifiers
 %type <code_node> declaration declarations
-%type <code_node> Ident FunctionIdent
+%type <code_node> Ident 
 %type <code_node> functions
 %type <code_node> Var Vars
 %type <code_node> Statement Statements ElseStatement
@@ -152,7 +152,9 @@ struct CodeNode* code_node;
 %% 
 
   /* write your rules here */
-prog_start: %empty { }| function prog_start {  };
+prog_start: functions {};
+
+functions: %empty {} | function functions {};
 
 
 function: FUNCTION IDENT {
@@ -164,18 +166,14 @@ function: FUNCTION IDENT {
 
 } SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
 { 
-	CodeNode* node = new CodeNode; 
+	/* CodeNode* node = new CodeNode; 
 	node->code += "endfunc\n"; 
-	printf(node->code.c_str());
-};
-/*function: FUNCTION FunctionIdent SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
-{
+	printf(node->code.c_str()); */
 
 CodeNode* node = new CodeNode;
-node->name = $2->name;
-node->code = "func " +  node->name + "\n" + $5->code;
+node->code = $6->code;
 
-std::string init_params = $5->code;
+std::string init_params = $6->code;
 int param_number = 0;
 while(init_params.find(".") != std::string::npos) {
         size_t pos = init_params.find(".");
@@ -186,16 +184,16 @@ while(init_params.find(".") != std::string::npos) {
         init_params.replace(init_params.find("\n", pos), 1, param);
 }
 
-node->code += init_params + $8->code;
+node->code += init_params + $9->code;
 
-std::string statements($11->code);
+std::string statements($12->code);
 if(statements.find("continue") != std::string::npos) {
         printf("ERROR: Continue outside loop in function");
 }
-node->code += statements + std::string("endfunc\n");
+node->code += statements + "endfunc\n\n";
 
 printf(node->code.c_str()); 
-}; */ 
+};  
 
 declaration: identifiers COLON INTEGER {  
 	CodeNode *node = new CodeNode;
@@ -204,7 +202,6 @@ declaration: identifiers COLON INTEGER {
 	add_variable_to_symbol_table(node->name, Integer);
 	/*print_symbol_table();*/
 	$$ = node;
-	printf(node->code.c_str());
  }
 | identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
 { 
@@ -248,7 +245,6 @@ declaration: identifiers COLON INTEGER {
 	oldpos = pos + 1;
    }
    $$ = node;
-   printf(node->code.c_str());
  };
 
 declarations: %empty
@@ -291,7 +287,6 @@ Statement: READ Vars {
 CodeNode* node = new CodeNode; 
 node->code = ".< " +  $2->code + "\n";
 $$ = node;
-printf(node->code.c_str());
 } | 
 BREAK
 {
@@ -318,7 +313,6 @@ $$ = node;
 	}
 	node->code += $1->name;
 	node->code += ", " + middle + "\n";
-	printf(node->code.c_str());
 	$$ = node;
 
 }
@@ -329,7 +323,6 @@ $$ = node;
 			CodeNode* node = new CodeNode;
 			node->code += $2->code + "?:= " + then_begin + ", " + $2->name + "\n" + $5->code + ":= " + after + "\n" + ": " + then_begin + "\n" + $4->code + ": " + after + "\n"; 
 			$$ = node;
-			printf(node->code.c_str());
 
 		  }		 
                  | WHILE BoolExp BEGINLOOP Statements ENDLOOP
@@ -371,21 +364,18 @@ $$ = node;
 			CodeNode* node = new CodeNode;
 			node->code += ".> " + $2->code + "\n";
 			$$ = node;
-			printf(node->code.c_str());
 		 }
                  | CONTINUE
 		 { 
 			CodeNode* node = new CodeNode;
 			node->code = "continue\n";
 			$$ = node; 
-			printf(node->code.c_str());
 		  }
                  | RETURN Expression
 		 { 
 			CodeNode* node = new CodeNode;
 			node->code += $2->code + "ret " + $2->name + "\n";
 			$$ = node; 
-			printf(node->code.c_str());
 		  }
 ;
 ElseStatement:   %empty
@@ -686,16 +676,6 @@ $$ = node;
 
  };
 
-FunctionIdent: IDENT 
-{
-	/*if(find($1)) { printf("Redeclaration of function %s", std::string($1)); }
-	else {
-		add_function_to_symbol_table($1);
-	}*/
-	CodeNode* node = new CodeNode;
-	node->name = $1;
-	$$ = node;
-};
 
 %% 
 
