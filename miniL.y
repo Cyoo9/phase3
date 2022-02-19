@@ -9,6 +9,7 @@ void yyerror(const char *msg);
 
 
 std::string create_temp();
+std::string create_label();
 struct CodeNode {
 	std::string name;
 	std::string code;
@@ -141,16 +142,15 @@ struct CodeNode* code_node;
 %type <code_node> declaration declarations
 %type <code_node> Ident
 %type <code_node> functions
-%type <code_node> Var
-%type <code_node> Statement Statements
-%type <code_node> Expression
-%type <code_node> Term
+%type <code_node> Var Vars
+%type <code_node> Statement Statements ElseStatement
+%type <code_node> Expression Expressions MultExp Term BoolExp RExp1 Comp
 /* %start program */
 
 %% 
 
   /* write your rules here */
-prog_start: %empty { printf("program -> epsilon\n"); }| function prog_start {  };
+prog_start: %empty { }| function prog_start {  };
 
 
 function: FUNCTION IDENT {
@@ -195,9 +195,9 @@ declaration: identifiers COLON INTEGER {
 	node->code = ". " + $1->name + "\n";
 	node->name = $1->name;
 	add_variable_to_symbol_table(node->name, Integer);
-	printf(node->code.c_str());
 	/*print_symbol_table();*/
 	$$ = node;
+	printf(node->code.c_str());
  }
 | identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
 { 
@@ -240,32 +240,57 @@ declaration: identifiers COLON INTEGER {
 
 	oldpos = pos + 1;
    }
-   printf(node->code.c_str());
    $$ = node;
+   printf(node->code.c_str());
  };
 
 declarations: %empty
-{  } 
+{ 
+CodeNode* node = new CodeNode;
+$$ = node;
+ } 
 | declaration SEMICOLON declarations 
-{  };
+{ 
+CodeNode* node = new CodeNode;
+node->code = $1->code;
+node->code += $3->code;
+$$ = node; 
+};
 
 	
 identifiers: Ident {
- 
+CodeNode* node = new CodeNode;
+node->name = $1->name;
+$$ = node;
  };
 
 
 Statements: 
 Statement SEMICOLON
 {
-
+CodeNode* node = new CodeNode;
+node->code = $1->code;
+$$ = node;
 }
 | Statement SEMICOLON Statements
 {
-  
+CodeNode* node = new CodeNode;
+node->code = $1->code;
+node->code += $3->code;
+$$ = node; 
 };
 
-Statement: READ Vars {  } | BREAK {  }  | Var ASSIGN Expression
+Statement: READ Vars { 
+CodeNode* node = new CodeNode; 
+node->code = ".< " +  $2->code + "\n";
+$$ = node;
+printf(node->code.c_str());
+} | 
+BREAK
+{
+CodeNode* node = new CodeNode;
+$$ = node;  
+}  | Var ASSIGN Expression
 { 
 	std::string var_name = $1->name;
 	if (!find(var_name)){
@@ -291,13 +316,26 @@ Statement: READ Vars {  } | BREAK {  }  | Var ASSIGN Expression
 
 }
                  | IF BoolExp THEN Statements ElseStatement ENDIF
-		 {  }		 
+		 {
+			std::string then_begin = create_label();
+			std::string after = create_label(); 
+			CodeNode* node = new CodeNode;
+			node->code += $2->code + "?:= " + then_begin + ", " + $2->name + "\n" + $5->code + ":= " + after + "\n" + ": " + then_begin + "\n" + $4->code + ": " + after + "\n"; 
+			$$ = node;
+			printf(node->code.c_str());
+
+		  }		 
                  | WHILE BoolExp BEGINLOOP Statements ENDLOOP
 		 {  }
                  | DO BEGINLOOP Statements ENDLOOP WHILE BoolExp
 		 { }
                  | WRITE Vars
-		 {  }
+		 { 
+			CodeNode* node = new CodeNode;
+			node->code += ".> " + $2->code + "\n";
+			$$ = node;
+			printf(node->code.c_str());
+		 }
                  | CONTINUE
 		 {   }
                  | RETURN Expression
@@ -322,15 +360,27 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 		}	
 		$$ = node;
 		};
+
 Vars:            Var
-{  }
+		{ 
+			CodeNode* node = new CodeNode;
+			node->code = $1->code; 
+			node->code = $1->name; 
+			$$ = node;
+		
+		}
                  | Var COMMA Vars
 		 {  };
 
 Expression:      MultExp
 {   }
                  | MultExp ADD Expression
-		 {   }
+		 { 
+			CodeNode* node = new CodeNode; 
+			node->name = create_temp().c_str();
+			node->code += $1->code + $3->code + ". " + node->name + "\n" + "+ " + node->name + ", " + $1->name + ", " + $3->name + "\n";
+			$$ = node;
+		  }
                  | MultExp SUB Expression
 		 {  }
 ;
@@ -454,5 +504,11 @@ printf("ERROR %s at symbol \"%s\" on line %d\n", msg, yytext, lineNum);
 std::string create_temp() {
 	int num = 0;
 	std::string temp = "_temp" + std::to_string(num++);
+	return temp;
+}
+
+std::string create_label() {
+	int num = 0;
+	std::string temp = "_label" + std::to_string(num++);
 	return temp;
 }
