@@ -392,7 +392,13 @@ ElseStatement:   %empty
 ;
 
 Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
-{ $$->array = true;  }
+{ 
+	CodeNode* node = new CodeNode;
+	node->name += $1->name + ", " + $3->name; 
+	node->code += $3->code;
+	$$ = node;
+	$$->array = true;
+}
                  | Ident
 		 {
 		CodeNode *node = new CodeNode;
