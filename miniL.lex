@@ -64,7 +64,7 @@ NEWLINE [\n]
 	}
 
 {DIGIT}+ {
-  yylval.numberToken = yytext;
+  yylval.numberToken = atoi(yytext);
   return NUMBER;
   lineCol += yyleng;
        }

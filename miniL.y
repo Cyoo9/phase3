@@ -3,21 +3,21 @@
 #include "lib.h"
 #include <map>
 #include <vector>
-#include<string.h>
+#include<string>
 extern int yylex(); 
 void yyerror(const char *msg);
 
 
-
+std::string create_temp();
 struct CodeNode {
 	std::string name;
 	std::string code;
+	bool array; 
 };
-
+extern char *identToken;
+extern int  numberToken;
 extern int currLine;
 
-char *identToken;
-int numberToken;
 int  count_names = 0;
 
 
@@ -36,13 +36,11 @@ std::vector <Function> symbol_table;
 
 Function *get_function() {
   int last = symbol_table.size()-1;
-  printf("get_function completed\n");
   return &symbol_table[last];
 }
 
 bool find(std::string &value) {
   Function *f = get_function();
-  printf("got the function\n");
   for(int i=0; i < f->declarations.size(); i++) {
     Symbol *s = &f->declarations[i];
     if (s->name == value) {
@@ -85,7 +83,7 @@ void print_symbol_table(void) {
 %union{
   /* put your types here */
 char *identToken;
-char * numberToken;
+int  numberToken;
 struct CodeNode* code_node;
 }
 %error-verbose
@@ -95,6 +93,7 @@ struct CodeNode* code_node;
 %token BEGIN_PARAMS
 %token BEGIN_LOCALS
 %token END_LOCALS
+%token END_PARAMS
 %token BEGIN_BODY 
 %token END_BODY
 %token INTEGER
@@ -143,7 +142,7 @@ struct CodeNode* code_node;
 %type <code_node> Ident
 %type <code_node> functions
 %type <code_node> Var
-%type <code_node> Statement
+%type <code_node> Statement Statements
 %type <code_node> Expression
 %type <code_node> Term
 /* %start program */
@@ -159,17 +158,17 @@ printf("passed\n");
 
 	std::string func_name = $2;
   	add_function_to_symbol_table(func_name);
- }
+	printf("added func name to symbol table\n");
+ } 
 SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
 {
-
-
+/*
 std::string temp = "func ";
 CodeNode* node = new CodeNode;
-node->name = func_name;
-node->code += std::string("\n") + func_name + $3->code;
+node->name = $2;
+node->code += std::string("\n") + node->name + $5->code;
 
-std::string init_params = $3->code;
+std::string init_params = $5->code;
 int param_number = 0;
 while(init_params.find(".") != std::string::npos) {
         size_t pos = init_params.find(".");
@@ -180,15 +179,15 @@ while(init_params.find(".") != std::string::npos) {
         init_params.replace(init_params.find("\n", pos), 1, param);
 }
 
-node->code += init_params + $6->code;
+node->code += init_params + $8->code;
 
-std::string statements($9->code);
+std::string statements($11->code);
 if(statements.find("continue") != std::string::npos) {
         printf("ERROR: Continue outside loop in function");
 }
 node->code += statements + std::string("endfunc\n");
 
-printf(node->code.c_str());
+printf(node->code.c_str()); */
 };
 
 declaration: identifiers COLON INTEGER {  
@@ -197,165 +196,214 @@ declaration: identifiers COLON INTEGER {
 	node->name = $1->name;
 	add_variable_to_symbol_table(node->name, Integer);
 	printf(node->code.c_str());
-	print_symbol_table();
+	/*print_symbol_table();*/
 	$$ = node;
-	printf("declaration -> identifiers COLON INTEGER\n");
  }
 | identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
-{  printf("Declaration -> Identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER %d R_SQUARE_BRACKET OF INTEGER;\n"); };
+{ 
+   if($5 <= 0) {
+	char temp[128];
+	snprintf(temp, 128, "Array size can't be less than 1!");
+   }
+   std::string vars($1->name);
+   std::string temp;
+   std::string variable;
+   bool cont = true;
+
+   size_t oldpos = 0;
+   size_t pos = 0;
+
+   CodeNode* node = new CodeNode;
+   while(cont) {
+ 	pos = vars.find("|", oldpos);
+	if(pos == std::string::npos) {
+		node->code = ".[] ";
+		variable = vars.substr(oldpos, pos);
+		node->code += variable + ", " + std::to_string($5) + "\n";
+		cont = false;
+	} 
+	else {
+		size_t len = pos - oldpos;
+      		node->code = ".[] ";
+		
+     		variable = vars.substr(oldpos, len);
+     		node->code += variable + ", " + std::to_string($5) + "\n";
+		
+	}
+	if(find(variable)) { 
+		char temp[128];
+		snprintf(temp, 128, "Redeclaration of variable %s", variable.c_str());
+		yyerror(temp);
+	} else {
+		add_variable_to_symbol_table(variable, Array);
+	}
+
+	oldpos = pos + 1;
+   }
+   printf(node->code.c_str());
+   $$ = node;
+ };
 
 declarations: %empty
-{ printf("declarations -> epsilon\n"); } 
+{  } 
 | declaration SEMICOLON declarations 
-{ printf("declarations -> declaration SEMICOLON declarations\n"); };
+{  };
 
-
+	
 identifiers: Ident {
- printf("identifiers -> Ident\n");
+ 
  };
 
 
 Statements: 
 Statement SEMICOLON
 {
-  printf("statements -> statement SEMICOLON\n");
+
 }
 | Statement SEMICOLON Statements
 {
-  printf("statements -> statement SEMICOLON statements\n");
+  
 };
 
-Statement: READ Vars {  printf("Statement -> Read\n");} | BREAK { printf("Statement -> Break\n");}  | Var ASSIGN Expression
-{printf("Statement -> Var ASSIGN Expression\n");
+Statement: READ Vars {  } | BREAK {  }  | Var ASSIGN Expression
+{ 
 	std::string var_name = $1->name;
 	if (!find(var_name)){
 		printf("ERRRRORRRR \n");
 	}
-	printf("MADE IT TO HERE\n\n\n");
 	CodeNode *node = new CodeNode;
-	node->code = $3->code;
-	printf("made it to heresasdasdasda\n\n\n");
-	node->code += std::string("= ") + var_name + std::string(", ") + $3->name + std::string("\n");
+	node->code += $1->code + $3->code;
+	std::string middle = $3->name; 
+	if($1->array && $3->array) {
+		middle = create_temp(); 
+		node->code += ". " + middle + "\n" + "=[] " + middle + ", " + $3->name + "\n" + "[]= ";
+	} else if($1->array) {
+		node->code += "[]= ";
+	} else if($3->array) {
+		node->code += "=[] ";
+	} else {
+		node->code += "= ";
+	}
+	node->code += $1->name;
+	node->code += ", " + middle + "\n";
 	printf(node->code.c_str());
 	$$ = node;
 
 }
                  | IF BoolExp THEN Statements ElseStatement ENDIF
-		 {printf("Statement -> IF BoolExp THEN Statements ElseStatement ENDIF\n");}		 
+		 {  }		 
                  | WHILE BoolExp BEGINLOOP Statements ENDLOOP
-		 {printf("Statement -> WHILE BoolExp BEGINLOOP Statements ENDLOOP\n");}
+		 {  }
                  | DO BEGINLOOP Statements ENDLOOP WHILE BoolExp
-		 {printf("Statement -> READ Vars\n");}
+		 { }
                  | WRITE Vars
-		 {printf("Statement -> WRITE Vars\n");}
+		 {  }
                  | CONTINUE
-		 {printf("Statement -> CONTINUE\n");}
+		 {   }
                  | RETURN Expression
-		 {printf("Statement -> RETURN Expression\n");}
+		 {   }
 ;
 ElseStatement:   %empty
-{printf("ElseStatement -> epsilon\n");}
+{    }
                  | ELSE Statements
-		 {printf("ElseStatement -> ELSE Statements\n");}
+		 {    }
 ;
 
 Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
-{printf("Var -> Ident  L_SQUARE_BRACKET Expression R_SQUARE_BRACKET\n");}
+{ $$->array = true;  }
                  | Ident
 		 {
 		CodeNode *node = new CodeNode;
 		node->code = "";
 		node->name = $1->name;
+		
 		if(!find(node->name)){
 			printf("ERRORRRRRRRRRR\n");
 		}	
 		$$ = node;
-		printf("Var -> Ident \n");}
-;
+		};
 Vars:            Var
-{printf("Vars -> Var\n");}
+{  }
                  | Var COMMA Vars
-		 {printf("Vars -> Var COMMA Vars\n");}
-;
+		 {  };
 
 Expression:      MultExp
-{printf("Expression -> MultExp\n");}
+{   }
                  | MultExp ADD Expression
-		 {printf("Expression -> MultExp ADD Expression\n");}
+		 {   }
                  | MultExp SUB Expression
-		 {printf("Expression -> MultExp SUB Expression\n");}
+		 {  }
 ;
 Expressions:     %empty
-{printf("Expressions -> epsilon\n");}
+{    }
                  | Expression COMMA Expressions
-		 {printf("Expressions -> Expression COMMA Expressions\n");}
+		 {  }
                  | Expression
-		 {printf("Expressions -> Expression\n");}
+		 {  }
 ;
 
 MultExp:         Term
-{printf("MultExp -> Term\n");}
+{  }
                  | Term MULT MultExp
-		 {printf("MultExp -> Term MULT MultExp\n");}
+		 {   }
                  | Term DIV MultExp
-		 {printf("MultExp -> Term DIV MultExp\n");}
+		 {  }
                  | Term MOD MultExp
-		 {printf("MultExp -> Term MOD MultExp\n");}
+		 {  }
 ;
 
 Term:            Var
-{printf("Term -> Var\n");}
+{   }
                  | SUB Var
-		 {printf("Term -> SUB Var\n");}
+		 {  }
                  | NUMBER
 		 {
 				
 			CodeNode *node = new CodeNode;
-			node->code = "";
-			node->name = $1;
+			node->name = std::to_string($1);
 			$$ = node;
 			
-			printf("Term -> NUMBER %d\n", $1);}
+		}
                  | SUB NUMBER
-		 {printf("Term -> SUB NUMBER %d\n", $2);}
+		 {  }
                  | L_PAREN Expression R_PAREN
-		 {printf("Term -> L_PAREN Expression R_PAREN\n");}
+		 { }
                  | SUB L_PAREN Expression R_PAREN
-		 {printf("Term -> SUB L_PAREN Expression R_PAREN\n");}
+		 {   }
                  | Ident L_PAREN Expressions R_PAREN
-		 {printf("Term -> Ident L_PAREN Expressions R_PAREN\n");}
+		 {  }
 ;
 
 
 
 BoolExp:            NOT RExp1 
-{printf("relation_exp -> NOT relation_exp1\n");}
+{  }
                  | RExp1
-                 {printf("relation_exp -> relation_exp1\n");}
+                 { }
 
 ;
 RExp1:           Expression Comp Expression
-{printf("relation_exp -> Expression Comp Expression\n");}
+{  }
                  | TRUE
-		     {printf("relation_exp -> TRUE\n");}
+		     {  }
                  | FALSE
-		     {printf("relation_exp -> FALSE\n");}
+		     {  }
                  | L_PAREN BoolExp R_PAREN
-		   {printf("relation_exp -> L_PAREN BoolExp R_PAREN\n");}
+		   { }
 ;
 
 Comp:            EQ
-{printf("comp -> EQ\n");}
+{  }
                  | NEQ
-                 {printf("comp -> NEQ\n");}
+                 {   }
                  | LT
-                 {printf("comp -> LT\n");}
+                 {  }
                  | GT
-                 {printf("comp -> GT\n");}
+                 {  }
                  | LTE
-                 {printf("comp -> LTE\n");}
+                 {   }
                  | GTE
-                 {printf("comp -> GTE\n");}
+                 { }
 ;
 
 
@@ -403,3 +451,8 @@ extern char* yytext;
 printf("ERROR %s at symbol \"%s\" on line %d\n", msg, yytext, lineNum); 
 }
 
+std::string create_temp() {
+	int num = 0;
+	std::string temp = "_temp" + std::to_string(num++);
+	return temp;
+}
