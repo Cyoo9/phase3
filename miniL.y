@@ -326,9 +326,39 @@ $$ = node;
 
 		  }		 
                  | WHILE BoolExp BEGINLOOP Statements ENDLOOP
-		 {  }
+		 { 
+			CodeNode* node = new CodeNode; 
+			std::string beginWhile = create_label();
+			std::string beginLoop = create_label();
+			std::string endLoop = create_label();
+			std::string statement = $4->code;
+			std::string jump;
+			jump.append(":= ");
+			jump.append(beginWhile);
+			while(statement.find("continue") != std::string::npos) {
+				statement.replace(statement.find("continue"), 8, jump);
+			}
+			
+			node->code += ": " + beginWhile + "\n" + $2->code + "?:= " + beginLoop + ", " + $2->name + "\n" + ":= " + endLoop + "\n" + ": " + beginLoop + "\n" + ": " + beginLoop + "\n" + statement + ":= " + beginWhile + "\n" + ": " + endLoop + "\n";
+			$$ = node; 
+		 }
                  | DO BEGINLOOP Statements ENDLOOP WHILE BoolExp
-		 { }
+		 {
+			CodeNode* node = new CodeNode;
+			std::string beginLoop = create_label();
+			std::string beginWhile = create_label();
+			std::string statement = $3->code;
+			std::string jump;
+			jump.append(":=");
+			jump.append(beginWhile);
+			while(statement.find("continue") != std::string::npos) {
+				statement.replace(statement.find("continue"), 8, jump); 
+			}
+			
+			node->code+= ": " + beginLoop + "\n" + statement + ": " + beginWhile + "\n" + $6->code + "?:= " + beginLoop + ", " + $6->name + "\n";
+
+			$$ = node; 
+		 }
                  | WRITE Vars
 		 { 
 			CodeNode* node = new CodeNode;
@@ -337,14 +367,29 @@ $$ = node;
 			printf(node->code.c_str());
 		 }
                  | CONTINUE
-		 {   }
+		 { 
+			CodeNode* node = new CodeNode;
+			node->code = "continue\n";
+			$$ = node; 
+		  }
                  | RETURN Expression
-		 {   }
+		 { 
+			CodeNode* node = new CodeNode;
+			node->code += $2->code + "ret " + $2->name + "\n";
+			$$ = node; 
+		  }
 ;
 ElseStatement:   %empty
-{    }
-                 | ELSE Statements
-		 {    }
+{  
+	CodeNode* node = new CodeNode;
+	$$ = node; 
+}
+| ELSE Statements
+{
+	CodeNode* node = new CodeNode;
+	node->code = $2->code;
+	$$ = node;     
+}
 ;
 
 Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
@@ -373,7 +418,12 @@ Vars:            Var
 		 {  };
 
 Expression:      MultExp
-{   }
+{ 
+	CodeNode* node = new CodeNode;
+	node->code = $1->code;
+	node->name = $1->name;
+	$$ = node; 
+}
                  | MultExp ADD Expression
 		 { 
 			CodeNode* node = new CodeNode; 
@@ -382,7 +432,13 @@ Expression:      MultExp
 			$$ = node;
 		  }
                  | MultExp SUB Expression
-		 {  }
+		 {
+			CodeNode* node = new CodeNode;
+                        node->name = create_temp().c_str();
+                        node->code += $1->code + $3->code + ". " + node->name + "\n" + "- " + node->name + ", " + $1->name + ", " + $3->name + "\n";
+                        $$ = node;
+ 
+		 }
 ;
 Expressions:     %empty
 {    }
