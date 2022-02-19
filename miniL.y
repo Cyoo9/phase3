@@ -142,7 +142,7 @@ struct CodeNode* code_node;
 %type <code_node> function
 %type <code_node>identifiers
 %type <code_node> declaration declarations
-%type <code_node> Ident
+%type <code_node> Ident FunctionIdent
 %type <code_node> functions
 %type <code_node> Var Vars
 %type <code_node> Statement Statements ElseStatement
@@ -156,19 +156,24 @@ prog_start: %empty { }| function prog_start {  };
 
 
 function: FUNCTION IDENT {
-	std::string func_name = $2;
-  	add_function_to_symbol_table(func_name);
-	CodeNode* node = new CodeNode;
-	node->code += "func " + func_name + "\n";
+        std::string func_name = $2;
+        add_function_to_symbol_table(func_name);
+        CodeNode* node = new CodeNode;
+        node->code += "func " + func_name + "\n";
+        printf(node->code.c_str());
+
+} SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
+{ 
+	CodeNode* node = new CodeNode; 
+	node->code += "endfunc\n"; 
 	printf(node->code.c_str());
- } 
-SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
+};
+/*function: FUNCTION FunctionIdent SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
 {
-/*
-std::string temp = "func ";
+
 CodeNode* node = new CodeNode;
-node->name = $2;
-node->code += std::string("\n") + node->name + $5->code;
+node->name = $2->name;
+node->code = "func " +  node->name + "\n" + $5->code;
 
 std::string init_params = $5->code;
 int param_number = 0;
@@ -189,8 +194,8 @@ if(statements.find("continue") != std::string::npos) {
 }
 node->code += statements + std::string("endfunc\n");
 
-printf(node->code.c_str()); */
-};
+printf(node->code.c_str()); 
+}; */ 
 
 declaration: identifiers COLON INTEGER {  
 	CodeNode *node = new CodeNode;
@@ -679,7 +684,18 @@ print_symbol_table();
 */
 $$ = node;
 
- }
+ };
+
+FunctionIdent: IDENT 
+{
+	/*if(find($1)) { printf("Redeclaration of function %s", std::string($1)); }
+	else {
+		add_function_to_symbol_table($1);
+	}*/
+	CodeNode* node = new CodeNode;
+	node->name = $1;
+	$$ = node;
+};
 
 %% 
 
