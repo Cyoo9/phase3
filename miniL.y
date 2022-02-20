@@ -1,9 +1,13 @@
 %{
 #include <stdio.h>
+#include <stdlib.h>
 #include "lib.h"
 #include <map>
 #include <vector>
 #include<string.h>
+#include <assert.h>
+
+#define snprinf 
 extern int yylex(); 
 void yyerror(const char *msg);
 
@@ -154,7 +158,12 @@ struct CodeNode* code_node;
   /* write your rules here */
 prog_start: functions {};
 
-functions: %empty {} | function functions {};
+functions: %empty {
+std::string mainString = "main";
+
+} | function functions {
+
+};
 
 
 function: FUNCTION IDENT {
@@ -199,6 +208,11 @@ declaration: identifiers COLON INTEGER {
 	CodeNode *node = new CodeNode;
 	node->code = ". " + $1->name + "\n";
 	node->name = $1->name;
+	if(find(node->name)) {
+		char temp[128];
+		snprinf(temp, 128, "Redeclaration of variable %s", node->name.c_str());	
+		yyerror(temp);
+	}
 	add_variable_to_symbol_table(node->name, Integer);
 	/*print_symbol_table();*/
 	$$ = node;
@@ -270,10 +284,10 @@ $$ = node;
 	CodeNode *node = new CodeNode;
 	node->code += $1->code + $3->code;
 	std::string middle = $3->name; 
-	if($1->array && $3->array) {
+/*	if($1->array && $3->array) {
 		middle = create_temp(); 
 		node->code += ". " + middle + "\n" + "=[] " + middle + ", " + $3->name + "\n" + "[]= ";
-	} else if($1->array) {
+	}*/ if($1->array) {
 		node->code += "[]= ";
 	} else if($3->array) {
 		node->code += "=[] ";
@@ -363,6 +377,11 @@ ElseStatement:   %empty
 
 Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 { 
+	if(!find($1->name)) {
+		char temp[128];
+		snprinf(temp, 128, "Use of undeclared variable %s", $1->name);
+		yyerror(temp); 
+	}
 	CodeNode* node = new CodeNode;
 	node->name += $1->name + ", " + $3->name; 
 	node->code += $3->code;
@@ -372,6 +391,11 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 }
                  | Ident
 		 {
+		if(!find($1->name)) {
+			char temp[128];
+			snprinf(temp, 128, "use of undeclared variable %s", $1->name);
+			yyerror(temp);
+		}
 		CodeNode *node = new CodeNode;
 		node->code = "";
 		node->name = $1->name;
@@ -410,14 +434,13 @@ Expression:      MultExp
 			node->name = strdup(create_temp().c_str());
 			node->code += $1->code + $3->code + ". " + node->name + "\n" + "+ " + node->name + ", " + $1->name + ", " + $3->name + "\n";
 			$$ = node;
-		  }
+		 }
                  | MultExp SUB Expression
 		 {
 			CodeNode* node = new CodeNode;
                         node->name = strdup(create_temp().c_str());
                         node->code += $1->code + $3->code + ". " + node->name + "\n" + "- " + node->name + ", " + $1->name + ", " + $3->name + "\n";
                         $$ = node;
- 
 		 }
 ;
 Expressions:     %empty
@@ -450,7 +473,7 @@ MultExp:         Term
 		 { 
 			CodeNode* node = new CodeNode;
 			node->name = strdup(create_temp().c_str());
-			node->code += ". " + node->name + "\n" + $1->code + $3->code + "* " + node->name + ", " + $1->name + ", " + $3->name + "\n";
+			node->code +=  ". " + node->name + "\n" + $1->code + $3->code + "* " + node->name + ", " + $1->name + ", " + $3->name + "\n";
 			$$ = node;  
 		 }
                  | Term DIV MultExp
