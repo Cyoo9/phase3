@@ -402,6 +402,7 @@ Expression:      MultExp
 	node->code = $1->code;
 	node->name = $1->name;
 	$$ = node; 
+	$$->array = false;
 }
                  | MultExp ADD Expression
 		 { 
@@ -486,7 +487,7 @@ Term:            Var
 }
                  | SUB Var
 		{ 
-			/*CodeNode* node = new CodeNode;
+			CodeNode* node = new CodeNode;
 			node->name = strdup(create_temp().c_str());
 			node->code += $2->code + ". " + node->name + "\n";
 			if($2->array) {
@@ -496,7 +497,7 @@ Term:            Var
 			}
 			node->code += "* " + node->name + ", " + node->name + ", -1\n";
 			$$ = node; 
-			$$->array  = false; */
+			$$->array  = false; 
 		}	
                  | NUMBER
 		 {
