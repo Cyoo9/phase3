@@ -252,9 +252,9 @@ node->code += $3->code;
 $$ = node; 
 };
 
-Statement: READ Vars { 
+Statement: READ Term { 
 CodeNode* node = new CodeNode; 
-node->code = ".< " +  $2->code + "\n";
+node->code = $2->code + ".< " +  $2->name + "\n";
 $$ = node;
 } | 
 BREAK
@@ -328,11 +328,12 @@ $$ = node;
 
 			$$ = node; 
 		 }
-                 | WRITE Vars
+                 | WRITE Term
 		 { 
 			CodeNode* node = new CodeNode;
-			node->code += ".> " + $2->code + "\n";
+			node->code += $2->code + ".> " + $2->name + "\n";
 			$$ = node;
+
 		 }
                  | CONTINUE
 		 { 
@@ -384,8 +385,7 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 Vars:            Var
 		{ 
 			CodeNode* node = new CodeNode;
-			node->code = $1->code; 
-			node->code = $1->name; 
+			node->code = $1->code + $1->name + "\n"; 
 			$$ = node;
 		
 		}
@@ -472,17 +472,21 @@ MultExp:         Term
 
 Term:            Var
 { 
+	CodeNode* node = new CodeNode;
 	if($$->array) {
-		CodeNode* node = new CodeNode;
 		std::string middle = create_temp();
 		node->code += $1->code + ". " + middle + "\n" + "=[] " + middle + ", " + $1->name + "\n";
 		$$->array  = false;
-		$$ = node;
+		node->name = middle;
+	} else {
+		node->code = $1->code;
+		node->name = $1->name;
 	}
+	$$ = node;
 }
                  | SUB Var
 		{ 
-			CodeNode* node = new CodeNode;
+			/*CodeNode* node = new CodeNode;
 			node->name = strdup(create_temp().c_str());
 			node->code += $2->code + ". " + node->name + "\n";
 			if($2->array) {
@@ -492,7 +496,7 @@ Term:            Var
 			}
 			node->code += "* " + node->name + ", " + node->name + ", -1\n";
 			$$ = node; 
-			$$->array  = false; 
+			$$->array  = false; */
 		}	
                  | NUMBER
 		 {
@@ -512,7 +516,7 @@ Term:            Var
 		 {
 			CodeNode* node = new CodeNode;
 			node->code += $2->code; 
-			node->name + $2->name;
+			node->name = $2->name;
 			$$ = node;
 		 }
                  | SUB L_PAREN Expression R_PAREN
