@@ -156,12 +156,12 @@ struct CodeNode* code_node;
 %% 
 
   /* write your rules here */
-prog_start: functions {};
-
-functions: %empty {
+prog_start: %empty  {
 std::string mainString = "main";
-
-} | function functions {
+if(!find(mainString)) {
+	yyerror("Function main not declared");
+}
+} | function prog_start {
 
 };
 
