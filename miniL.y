@@ -39,7 +39,11 @@ struct Function {
 };
 
 std::vector <Function> symbol_table;
-
+std::vector<std:: string> reservedWords = {"FUNCTION", "BEGIN_PARAMS", "END_PARAMS", "BEGIN_LOCALS", "END_LOCALS", "BEGIN_BODY", "END_BODY", "INTEGER",
+    "ARRAY", "OF", "IF", "THEN", "ENDIF", "ELSE", "WHILE", "DO", "IN", "BEGINLOOP", "ENDLOOP", "CONTINUE", "READ", "WRITE",
+    "NOT", "TRUE", "FALSE", "RETURN", "SUB", "ADD", "MULT", "DIV", "MOD", "EQ", "NEQ", "LT", "GT", "LTE", "GTE", "L_PAREN", "R_PAREN", "L_SQUARE_BRACKET",
+    "R_SQUARE_BRACKET", "COLON", "SEMICOLON", "COMMA", "ASSIGN", "function", "Ident", "beginparams", "endparams", "beginlocals", "endlocals", "integer", 
+    "beginbody", "endbody", "beginloop", "endloop", "if", "endif", "continue", "while", "else", "read", "do", "write"};
 
 Function *get_function() {
   int last = symbol_table.size()-1;
@@ -92,7 +96,17 @@ void print_symbol_table(void) {
   printf("--------------------\n");
 }
 
-
+bool checkVarType(std:: string value, Type t) {
+	if(!find(value) && !findFunction(value)) return false;
+	Function *f = get_function();
+  	for(int i=0; i < f->declarations.size(); i++) {
+    		Symbol *s = &f->declarations[i];
+    		if (s->type == t) {
+      			return true;
+    		}
+  	}
+	return false;
+}
 %}
 
 
@@ -221,6 +235,13 @@ declaration: identifiers COLON INTEGER {
 		char temp[128];
 		snprintf(temp, 128, "Redeclaration of variable %s", $1->name.c_str());	
 		yyerror(temp);
+	}
+	for(int i = 0; i < reservedWords.size(); i++) {
+		if(reservedWords.at(i) == node->name) {
+			char temp[128];
+			snprintf(temp, 128, "%s is a reserved keyword", node->name.c_str());
+			yyerror(temp);
+		}
 	}
 	add_variable_to_symbol_table(node->name, Integer);
 	/*print_symbol_table();*/
@@ -396,7 +417,12 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 		char temp[128];
 		snprinf(temp, 128, "Use of undeclared variable %s", $1->name.c_str());
 		yyerror(temp); 
-	}
+	} else if(checkVarType($1->name, Array)) {
+                char temp[128];
+                snprintf(temp, 128, "Cannot use an integer variable %s as an array variable");
+                yyerror(temp);
+        }
+	
 	CodeNode* node = new CodeNode;
 	node->name += $1->name + ", " + $3->name; 
 	node->code += $3->code;
@@ -411,10 +437,15 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 			snprintf(temp, 128, "Use of undeclared variable %s", $1->name.c_str());
 			yyerror(temp);
 		}
+		else if(checkVarType($1->name, Array)) {
+			char temp[128];
+			snprintf(temp, 128, "Cannot use an array variable %s as an integer variable");
+			yyerror(temp);
+		}
 		CodeNode *node = new CodeNode;
 		node->code = "";
 		node->name = $1->name;
-		
+		add_variable_to_symbol_table(node->name, Integer); 
 		$$ = node;
 		};
 
