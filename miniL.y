@@ -57,6 +57,15 @@ bool find(std::string &value) {
   return false;
 }
 
+
+bool findFunction(std::string &name) {
+   for(int i = 0; i < symbol_table.size(); i++) {
+       if(name == symbol_table[i].name) {
+            return true;
+        }
+    }
+    return false;
+}
 void add_function_to_symbol_table(std::string &value) {
   Function f; 
   f.name = value; 
@@ -158,7 +167,7 @@ struct CodeNode* code_node;
   /* write your rules here */
 prog_start: %empty  {
 std::string mainString = "main";
-if(!find(mainString)) {
+if(!findFunction(mainString)) {
 	yyerror("Function main not declared");
 }
 } | function prog_start {
@@ -357,6 +366,7 @@ $$ = node;
 		  }
                  | RETURN Expression
 		 { 
+
 			CodeNode* node = new CodeNode;
 			node->code += $2->code + "ret " + $2->name + "\n";
 			$$ = node; 
