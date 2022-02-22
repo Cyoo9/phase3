@@ -206,7 +206,7 @@ node->code += init_params + $9->code;
 
 std::string statements($12->code);
 if(statements.find("continue") != std::string::npos) {
-        printf("ERROR: Continue outside loop in function");
+        yyerror("continue statement not within a loop");
 }
 node->code += statements + "endfunc\n\n";
 
@@ -219,7 +219,7 @@ declaration: identifiers COLON INTEGER {
 	node->name = $1->name;
 	if(find(node->name)) {
 		char temp[128];
-		snprinf(temp, 128, "Redeclaration of variable %s", node->name.c_str());	
+		snprintf(temp, 128, "Redeclaration of variable %s", $1->name.c_str());	
 		yyerror(temp);
 	}
 	add_variable_to_symbol_table(node->name, Integer);
@@ -235,6 +235,11 @@ declaration: identifiers COLON INTEGER {
 
    CodeNode* node = new CodeNode;
    node->code += ".[] " + $1->name + ", " + std::to_string($5) + "\n";
+   if(find($1->name)) {
+	char temp[128];
+	snprintf(temp, 128, "Redeclaration of variable %s", $1->name.c_str());
+	yyerror(temp);
+   }
    add_variable_to_symbol_table($1->name, Array); 
    $$ = node; 
  };
@@ -389,7 +394,7 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 { 
 	if(!find($1->name)) {
 		char temp[128];
-		snprinf(temp, 128, "Use of undeclared variable %s", $1->name);
+		snprinf(temp, 128, "Use of undeclared variable %s", $1->name.c_str());
 		yyerror(temp); 
 	}
 	CodeNode* node = new CodeNode;
@@ -403,16 +408,13 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 		 {
 		if(!find($1->name)) {
 			char temp[128];
-			snprinf(temp, 128, "use of undeclared variable %s", $1->name);
+			snprintf(temp, 128, "Use of undeclared variable %s", $1->name.c_str());
 			yyerror(temp);
 		}
 		CodeNode *node = new CodeNode;
 		node->code = "";
 		node->name = $1->name;
 		
-		if(!find(node->name)){
-			printf("ERRORRRRRRRRRR\n");
-		}	
 		$$ = node;
 		};
 
@@ -562,6 +564,11 @@ Term:            Var
 	 	 }
                  | Ident L_PAREN Expressions R_PAREN
 		 {
+			if(!findFunction($1->name)) { 
+				char temp[128];
+				snprinf(temp, 128, "Function %s is undeclared", $1->name);
+				yyerror(temp);
+			}
 			CodeNode* node = new CodeNode;
 			node->name = strdup(create_temp().c_str());
 			node->code += $3->code + ". " + node->name + "\n" + "call " + $1->name + ", " + node->name + "\n";
