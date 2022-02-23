@@ -97,11 +97,10 @@ void print_symbol_table(void) {
 }
 
 bool checkVarType(std:: string value, Type t) {
-	if(!find(value)) return false;
 	Function *f = get_function();
   	for(int i=0; i < f->declarations.size(); i++) {
     		Symbol *s = &f->declarations[i];
-    		if (s->type == t) {
+    		if (s->name == value && s->type == t) {
       			return true;
     		}
   	}
@@ -417,11 +416,11 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 		char temp[128];
 		snprinf(temp, 128, "Use of undeclared variable %s", $1->name.c_str());
 		yyerror(temp); 
-	} /*else if(checkVarType($1->name, Array)) {
+	} else if(checkVarType($1->name, Integer)) {
                 char temp[128];
                 snprintf(temp, 128, "Cannot use an integer variable %s as an array variable");
                 yyerror(temp);
-        }*/
+        }
 	
 	CodeNode* node = new CodeNode;
 	node->name += $1->name + ", " + $3->name; 
@@ -437,11 +436,11 @@ Var:             Ident L_SQUARE_BRACKET Expression R_SQUARE_BRACKET
 			snprintf(temp, 128, "Use of undeclared variable %s", $1->name.c_str());
 			yyerror(temp);
 		}
-		/*else if(checkVarType($1->name, Array)) {
+		else if(checkVarType($1->name, Array)) {
 			char temp[128];
 			snprintf(temp, 128, "Cannot use an array variable %s as an integer variable");
 			yyerror(temp);
-		}*/
+		}
 		CodeNode *node = new CodeNode;
 		node->code = "";
 		node->name = $1->name;
