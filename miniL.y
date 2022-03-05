@@ -197,9 +197,6 @@ function: FUNCTION IDENT {
 
 } SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY Statements END_BODY
 { 
-	/* CodeNode* node = new CodeNode; 
-	node->code += "endfunc\n"; 
-	printf(node->code.c_str()); */
 
 CodeNode* node = new CodeNode;
 node->code = $6->code;
