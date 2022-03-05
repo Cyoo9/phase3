@@ -1,0 +1,24 @@
+function main;
+beginparams
+endparams
+beginlocals
+
+a : integer;
+b : integer;
+c : integer;
+
+endlocals
+beginbody
+
+  a := 100;
+  b := 50;
+
+  if a < b then
+    c := b;
+  else
+    c := a;
+  endif;
+
+  write c;  ## This should print out 100
+
+endbody
