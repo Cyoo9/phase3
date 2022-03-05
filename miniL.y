@@ -308,7 +308,8 @@ $$ = node;
 BREAK
 {
 CodeNode* node = new CodeNode;
-$$ = node;  
+node->code = "break\n";
+$$ = node; 
 }  | Var ASSIGN Expression
 { 
 	std::string var_name = $1->name;
@@ -350,13 +351,17 @@ $$ = node;
 			std::string endLoop = create_label();
 			std::string statement = $4->code;
 			std::string jump;
+			std::string breakTemp = ":= " + endLoop + "\n" + ": ";
 			jump.append(":= ");
 			jump.append(beginWhile);
 			while(statement.find("continue") != std::string::npos) {
 				statement.replace(statement.find("continue"), 8, jump);
 			}
+			while(statement.find("break") != std::string::npos) {
+				statement.replace(statement.find("break"), 8, breakTemp);	
+			}
+			node->code += ": " + beginWhile + "\n" + $2->code + "?:= " + beginLoop + ", " + $2->name + "\n" + ":= " + endLoop + "\n" + ": " + beginLoop + "\n" + statement + ":= " + beginWhile + "\n" + ": " + endLoop + "\n";
 			
-			node->code += ": " + beginWhile + "\n" + $2->code + "?:= " + beginLoop + ", " + $2->name + "\n" + ":= " + endLoop + "\n" + ": " + beginLoop + "\n" + ": " + beginLoop + "\n" + statement + ":= " + beginWhile + "\n" + ": " + endLoop + "\n";
 			$$ = node; 
 		 }
                  | DO BEGINLOOP Statements ENDLOOP WHILE BoolExp

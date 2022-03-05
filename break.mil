@@ -7,13 +7,13 @@ func main
 ?:= _label3, _temp0
 := _label4
 : _label3
-: _label3
 .> i
 . _temp1
 > _temp1, i, 2
 ?:= _label0, _temp1
 := _label1
 : _label0
+:= _label4
 : _label1
 . _temp2
 + _temp2, i, 1
