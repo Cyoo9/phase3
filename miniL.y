@@ -240,7 +240,6 @@ declaration: identifiers COLON INTEGER {
 		}
 	}
 	add_variable_to_symbol_table(node->name, Integer);
-	/*print_symbol_table();*/
 	$$ = node;
  }
 | identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
