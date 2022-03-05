@@ -17,7 +17,7 @@ std::string create_label();
 struct CodeNode {
 	std::string name;
 	std::string code;
-	bool array; 
+	bool array = false; 
 };
 extern char *identToken;
 extern int  numberToken;
@@ -612,8 +612,9 @@ BoolExp:            NOT RExp1
 {
 	std::string dest = create_temp();
 	CodeNode* node = new CodeNode;
+        node->name = dest;	
 	node->code += $2->code + ". " + dest + "\n" + "! " + dest + ", " + $2->name + "\n";
-	$$ = node;  
+	$$ = node;
 }
                  | RExp1
                  {
@@ -629,6 +630,7 @@ RExp1:           Expression Comp Expression
 
 std::string dest = create_temp();
 CodeNode* node = new CodeNode;
+node->name = dest;
 node->code += $1->code + $3->code + ". " + dest + "\n" + $2->name + dest + ", " + $1->name + ", " + $3->name + "\n";
 $$ = node; 
 }

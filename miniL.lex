@@ -56,6 +56,7 @@ NEWLINE [\n]
 "true"         return TRUE; lineCol += yyleng;
 "false"        return FALSE; lineCol += yyleng;
 "return"       return RETURN; lineCol += yyleng;
+"break"        return BREAK; lineCol += yyleng;
 
 {LETTER}({CHAR}*{ALPHANUMER}+)? {
   yylval.identToken = yytext;

@@ -1,0 +1,18 @@
+func main
+. i
+= i, 0
+: _label0
+. _temp0
+< _temp0, i, 10
+?:= _label1, _temp0
+:= _label2
+: _label1
+: _label1
+. _temp1
++ _temp1, i, 1
+= i, _temp1
+.> i
+:= _label0
+: _label2
+endfunc
+
